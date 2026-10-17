@@ -9,3 +9,7 @@ local.properties
 # Signing material
 *.jks
 *.keystore
+
+# Python bytecode (bsd/ verification harness)
+__pycache__/
+*.pyc

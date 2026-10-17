@@ -52,3 +52,14 @@ The APK can also be copied to the phone and opened there; Android may ask you to
 - `data/local/`: Room entities, DAOs, database, and local repository implementation
 - `domain/model/` and `domain/repository/`: app models, money rules, and repository contract
 - `ui/`: Compose screens, components, ViewModel, and dark matte-blue theme
+
+## Research notes
+
+`bsd/` contains a standalone study of the **Birch and Swinnerton-Dyer conjecture** — the
+Clay Millennium Prize Problem shown in the task screenshot. It is unrelated to the app
+code above. `bsd/BSD_REPORT.md` states the conjecture precisely, works out the curve
+from the screenshot (`y² = x³ − x + 1` = Cremona 92b1) end to end, explains exactly
+which parts of BSD are theorems and which remain open, and documents a reproducible
+verification harness (`bsd/bsd.py`, `bsd/verify.py`) that checks the BSD identity —
+rank equality, the leading-coefficient formula and the predicted size of the
+Tate–Shafarevich group — over Cremona's whole database up to a conductor bound.
