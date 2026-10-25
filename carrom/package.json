@@ -1,0 +1,16 @@
+{
+  "name": "apna-carrom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Realistic offline two-player carrom with impulse-based disc collisions, spin and full match rules",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "soak": "node scripts/soak.mjs 300",
+    "check": "node --check server.mjs && node --check src/constants.js && node --check src/physics.js && node --check src/rules.js && node --check src/render.js && node --check src/sound.js && node --check src/storage.js && node --check src/main.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

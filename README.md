@@ -9,6 +9,12 @@ Apna Hisab is a single-device, completely offline roommate expense tracker built
 > [`docs/REA-EVIDENCE.md`](docs/REA-EVIDENCE.md) and [`docs/REA-WORKFLOW.md`](docs/REA-WORKFLOW.md).
 > The Android app below is unchanged; the web app is an independent module. Quick start:
 > `cd web && npm start` (Node 18+, zero dependencies).
+>
+> **Also new:** [`carrom/`](carrom/README.md) contains **Apna Carrom**, an original
+> offline local 2-player carrom game with an impulse-based rigid-disc physics
+> engine (spin, friction, cushions, pockets, anti-tunnelling) and a full match
+> rules state machine. **No AI opponent.** Quick start: `cd carrom && npm start`
+> then open `http://localhost:3100`. Zero dependencies, Node 18+.
 
 ## Requirements
 
@@ -60,3 +66,6 @@ The APK can also be copied to the phone and opened there; Android may ask you to
 - `data/local/`: Room entities, DAOs, database, and local repository implementation
 - `domain/model/` and `domain/repository/`: app models, money rules, and repository contract
 - `ui/`: Compose screens, components, ViewModel, and dark matte-blue theme
+- `web/`: Apna AI — independent browser chat workspace (static frontend + Node mock/proxy API)
+- `carrom/`: Apna Carrom — independent browser 2-player carrom game; see [`carrom/docs/PHYSICS.md`](carrom/docs/PHYSICS.md)
+- `docs/` and `tools/`: REA workflow notes and helper script used for the web module
