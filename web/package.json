@@ -1,0 +1,14 @@
+{
+  "name": "apna-ai-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Apna AI — local ChatGPT-style chat workspace with pluggable API providers",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node --check app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -9,3 +9,7 @@ local.properties
 # Signing material
 *.jks
 *.keystore
+
+# Node tooling for the web workspace (the app itself has no dependencies)
+node_modules/
+npm-debug.log*
