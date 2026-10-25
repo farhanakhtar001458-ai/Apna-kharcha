@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Apna Carrom — a realistic, offline two-player carrom board with true disc collisions, spin and full match rules." />
+  <title>Apna Carrom — realistic carrom</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-new" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h9a6 6 0 0 1 0 12h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -5)"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m17 9 5 6m0-6-5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 9a2.6 2.6 0 1 1 3.2 2.5c-.7.2-1.2.9-1.2 1.7v.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.2M20 5v6h-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><span class="brand-striker"></span></span>
+        <span class="brand-text">
+          <strong>Apna Carrom</strong>
+          <small>real physics · local 2-player · no AI</small>
+        </span>
+      </div>
+      <div class="top-actions">
+        <button class="top-btn" id="newGameBtn" title="Start a new match"><svg class="icon"><use href="#i-new"/></svg><span>New game</span></button>
+        <button class="top-btn" id="undoBtn" title="Undo last shot (U)"><svg class="icon"><use href="#i-undo"/></svg><span>Undo</span></button>
+        <button class="top-btn" id="soundBtn" title="Toggle sound (M)" aria-label="Toggle sound"><svg class="icon" id="soundIcon"><use href="#i-sound"/></svg></button>
+        <button class="top-btn" id="rulesBtn" title="Rules"><svg class="icon"><use href="#i-help"/></svg><span>Rules</span></button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- ---------------------------- Left panel ---------------------------- -->
+      <aside class="panel panel-left">
+        <section class="card scoreboard">
+          <div class="card-head"><h2>Match</h2><span class="badge" id="targetLabel">First to 8</span></div>
+          <div class="players">
+            <div class="player active" id="player0">
+              <div class="player-top"><span class="coin-dot white"></span><span class="player-name" id="name0">Player 1</span></div>
+              <div class="player-score" id="score0">0</div>
+              <div class="player-meta"><span id="left0">9 white left</span><span class="due" id="due0" hidden>1 due</span></div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="player" id="player1">
+              <div class="player-top"><span class="coin-dot black"></span><span class="player-name" id="name1">Player 2</span></div>
+              <div class="player-score" id="score1">0</div>
+              <div class="player-meta"><span id="left1">9 black left</span><span class="due" id="due1" hidden>1 due</span></div>
+            </div>
+          </div>
+          <div class="progress"><div class="progress-fill p0" id="progress0"></div><div class="progress-fill p1" id="progress1"></div></div>
+          <div class="queen-line"><span class="queen-dot"></span><span id="queenStatus">Queen on the board</span></div>
+        </section>
+
+        <section class="card turncard">
+          <div class="turn-head"><span class="turn-pulse" id="turnPulse"></span><strong id="statusText">Player 1's turn</strong></div>
+          <div class="turn-stats"><span>Shots <b id="shotCount">0</b></span><span>Coins left <b id="coinsLeft">19</b></span><span>Speed <b id="speedReadout">0</b> cm/s</span></div>
+        </section>
+
+        <section class="card logcard">
+          <div class="card-head"><h3>Shot log</h3><button class="mini-link" id="clearLogBtn">clear</button></div>
+          <ul class="log" id="logList"><li class="log-empty">No shots yet. Drag back from the striker to begin.</li></ul>
+        </section>
+      </aside>
+
+      <!-- ------------------------------ Board ------------------------------ -->
+      <section class="board-area">
+        <div class="board-shell" id="boardShell">
+          <canvas id="board" aria-label="Carrom board" role="img"></canvas>
+        </div>
+        <div class="board-help" id="boardHelp">
+          <b>Drag back</b> from anywhere on the board to aim · <b>Release</b> to shoot · <b>Space</b> for the current settings
+        </div>
+        <div class="board-toast" id="boardToast" hidden></div>
+      </section>
+
+      <!-- ---------------------------- Right panel --------------------------- -->
+      <aside class="panel panel-right">
+        <section class="card controls">
+          <div class="card-head"><h3>Shot controls</h3><svg class="icon target"><use href="#i-target"/></svg></div>
+
+          <div class="control">
+            <label for="powerSlider">Power <span id="powerValue">55%</span></label>
+            <input type="range" id="powerSlider" min="0" max="100" value="55" />
+          </div>
+          <div class="control">
+            <label for="angleSlider">Aim <span id="angleValue">−90°</span></label>
+            <input type="range" id="angleSlider" min="-180" max="180" value="-90" />
+          </div>
+          <div class="control">
+            <label for="spinSlider">Spin / cut <span id="spinValue">0</span></label>
+            <input type="range" id="spinSlider" min="-100" max="100" value="0" />
+          </div>
+          <div class="control">
+            <label for="posSlider">Striker position <span id="posValue">50%</span></label>
+            <input type="range" id="posSlider" min="0" max="100" value="50" />
+          </div>
+          <div class="btn-row">
+            <button class="primary-btn" id="shootBtn">Shoot <kbd>Space</kbd></button>
+            <button class="ghost-btn" id="resetStrikerBtn" title="Reset striker to baseline"><svg class="icon"><use href="#i-reset"/></svg></button>
+          </div>
+          <p class="hint">Keyboard: <b>←/→</b> move striker · <b>A/D</b> aim · <b>W/S</b> power · <b>Q/E</b> spin · <b>Space</b> shoot · <b>U</b> undo · <b>M</b> mute</p>
+        </section>
+
+        <section class="card settings">
+          <div class="card-head"><h3>Table &amp; game</h3></div>
+          <div class="field-row">
+            <div class="field"><label for="nameInput1">Player 1</label><input type="text" id="nameInput1" maxlength="18" value="Player 1" /></div>
+            <div class="field"><label for="nameInput2">Player 2</label><input type="text" id="nameInput2" maxlength="18" value="Player 2" /></div>
+          </div>
+          <div class="field"><label for="targetInput">Target score</label><input type="number" id="targetInput" min="1" max="25" value="8" /></div>
+          <div class="control"><label for="polishSlider">Table polish <span id="polishValue">0.50</span></label><input type="range" id="polishSlider" min="0" max="100" value="50" /></div>
+          <div class="control"><label for="bounceSlider">Cushion bounce <span id="bounceValue">0.50</span></label><input type="range" id="bounceSlider" min="0" max="100" value="50" /></div>
+          <div class="control"><label for="volumeSlider">Volume <span id="volumeValue">60%</span></label><input type="range" id="volumeSlider" min="0" max="100" value="60" /></div>
+          <div class="switches">
+            <label class="switch-row"><input type="checkbox" id="guidesChk" checked /><span>Aim guides</span></label>
+            <label class="switch-row"><input type="checkbox" id="fxChk" checked /><span>Collision effects</span></label>
+            <label class="switch-row"><input type="checkbox" id="muteChk" /><span>Mute</span></label>
+          </div>
+          <button class="ghost-btn wide" id="applySettingsBtn">Apply settings</button>
+          <p class="hint">Polish / bounce / volume apply immediately. Names and target need <b>New game</b>.</p>
+        </section>
+
+        <section class="card history">
+          <div class="card-head"><h3>Recent matches</h3><button class="mini-link" id="clearHistoryBtn">clear</button></div>
+          <ul class="history" id="historyList"><li class="log-empty">No finished matches yet.</li></ul>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <!-- ------------------------------- Modals ------------------------------- -->
+  <div class="modal-backdrop" id="rulesModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+      <div class="modal-head">
+        <div><h2 id="rulesTitle">How to play</h2><p class="modal-sub">Standard carrom rules, simplified for a clean local match.</p></div>
+        <button class="icon-btn" id="closeRules" aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <h3>The board</h3>
+        <p>9 white men, 9 black men and 1 red queen. <b>Player 1 = white</b>, <b>Player 2 = black</b>. Flick the striker from the baseline at your end to pot your own colour.</p>
+        <h3>Scoring</h3>
+        <ul>
+          <li>Your own carrom man = <b>+1</b> and you shoot again.</li>
+          <li>Opponent's man = <b>opponent +1</b>, and your turn ends.</li>
+          <li>Queen (red) = <b>+3</b>, but only when <b>covered</b>: pot it together with one of your own men, or use the one extra shot it gives you to cover it. Fail and the queen returns to the centre.</li>
+          <li>First to the target score wins. If all coins leave the board earlier, the higher score wins. Equal scores = draw.</li>
+        </ul>
+        <h3>Fouls &amp; dues</h3>
+        <ul>
+          <li>Striker potted = foul. Every coin potted in that stroke is returned to the board and you owe <b>1 due</b>.</li>
+          <li>A due is cleared by your next potted own man — that coin is returned instead of scoring.</li>
+        </ul>
+        <h3>Controls</h3>
+        <ul>
+          <li><b>Drag back</b> anywhere on the board to set direction and power, then release to shoot.</li>
+          <li>Sliders set power, aim, spin (cut shots) and striker position on the baseline.</li>
+          <li>Keyboard: <b>←/→</b> striker · <b>A/D</b> aim · <b>W/S</b> power · <b>Q/E</b> spin · <b>Space</b> shoot · <b>U</b> undo · <b>M</b> mute · <b>Esc</b> close.</li>
+        </ul>
+        <h3>Physics</h3>
+        <p>Real-time rigid-disc simulation: impulse-based collisions with restitution and Coulomb friction, spin transfer, rolling resistance, adaptive sub-stepping against tunnelling, and solid cushions with pocket jaws. Table polish and cushion bounce are tunable above.</p>
+      </div>
+      <div class="modal-foot"><button class="primary-btn" id="rulesOk">Got it</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="winModal" hidden>
+    <div class="modal win-modal" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+      <div class="confetti" id="confetti" aria-hidden="true"></div>
+      <div class="win-mark"><svg class="icon"><use href="#i-check"/></svg></div>
+      <h2 id="winTitle">Player 1 wins!</h2>
+      <p class="win-score" id="winScore">0 — 0</p>
+      <p class="modal-sub" id="winDetail">Thanks for playing.</p>
+      <div class="btn-row center">
+        <button class="primary-btn" id="playAgainBtn">Play again</button>
+        <button class="ghost-btn" id="closeWinBtn">View board</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
