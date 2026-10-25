@@ -2,6 +2,14 @@
 
 Apna Hisab is a single-device, completely offline roommate expense tracker built with Kotlin, Jetpack Compose, and Android Room (SQLite). All room, roommate, expense, split, and balance-audit data stays in the app's local database. There are no accounts, network calls, synchronization, or cloud services.
 
+> **New in this branch:** `web/` contains **Apna AI**, a separate rebranded ChatGPT-style
+> chat workspace with pluggable API providers, streaming replies and animations. It was
+> reconstructed from shipped static frontends using the
+> [REA (Reverse Engineer Anything)](https://github.com/morluto/rea.git) workflow — see
+> [`docs/REA-EVIDENCE.md`](docs/REA-EVIDENCE.md) and [`docs/REA-WORKFLOW.md`](docs/REA-WORKFLOW.md).
+> The Android app below is unchanged; the web app is an independent module. Quick start:
+> `cd web && npm start` (Node 18+, zero dependencies).
+
 ## Requirements
 
 - Android Studio with a JDK 17-compatible Gradle runtime
