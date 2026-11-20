@@ -14,5 +14,3 @@ local.properties
 node_modules/
 npm-debug.log*
 
-# Rendered video artifacts (regenerate with moon-orbit-video/scripts/render.py)
-moon-orbit-video/*.mp4
