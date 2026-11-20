@@ -32,13 +32,18 @@ import imageio_ffmpeg
 W, H = 1920, 1080
 FPS = 30
 DUR = 61.0
-NF = int(DUR * FPS)
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    "chand-dur-2d-motion-graphics.mp4")
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONT_DEV = os.path.join(HERE, "assets/fonts/NotoSansDevanagari.ttf")
 FONT_LAT = os.path.join(HERE, "assets/fonts/Inter.ttf")
 FFMPEG = os.environ.get("FFMPEG") or imageio_ffmpeg.get_ffmpeg_exe()
+AUDIO_DIR = os.path.join(HERE, "audio")
+VOICEOVER = not os.environ.get("NO_VO")      # NO_VO=1 -> silent render
+VO_LEAD = 0.85      # seconds of quiet before each narration line starts
+VO_TAIL = 1.15      # breathing room after each narration line ends
+FPS_SAFE_MIN = 6.0  # no scene shorter than this
+START_PAD = 4.6     # title builds before narration starts
 
 # palette
 BG0 = (9, 13, 31)
@@ -420,14 +425,16 @@ def scene_why(im, d, t, moon=None):
     rx, ry = 330, 130
     d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], outline=(72, 84, 134), width=2)
     prog = clamp(ease_io(ll, .2, 2.0))
+    idle = max(0.0, ll - 2.4) * 0.42          # keeps the orbit alive for the VO
+    spin = ll * 9
     # dashed trail
     n = 46
     for i in range(int(n * prog)):
         a = i / n * math.tau
         x, y = cx + rx * math.cos(a), cy + ry * math.sin(a)
         d.ellipse([x - 3, y - 3, x + 3, y + 3], fill=(110, 128, 190))
-    draw_earth(im, cx, cy, r=70)
-    ma = -1.2 + prog * 2.2
+    draw_earth(im, cx, cy, r=70, rot=spin)
+    ma = -1.2 + prog * 2.2 + idle
     mx, my = cx + rx * math.cos(ma), cy + ry * math.sin(ma)
     blob_shadow(im, cx, cy + 150, 190, 26, a=70)
     d.ellipse([mx - 26, my - 26, mx + 26, my + 26], fill=MOON)
@@ -466,8 +473,17 @@ def scene_snap(im, d, t, moon):
 
     cx, cy = W / 2 - 30, 640
     push = ease_io(ll, 0, 2.4)      # slow push-in (camera move)
+    creep = ease_io(ll, 5.0, 20.0)  # keeps the shot breathing under the narration
     base_r = 210
-    r = base_r * (1.06 + 0.02 * push)
+    r = base_r * (1.06 + 0.02 * push + 0.05 * creep)
+    cy = cy - 26 * creep
+    # far starfield drifting slowly (depth layer)
+    rng0 = random.Random(5)
+    for k in range(90):
+        sx = (rng0.uniform(0, W) - ll * 6 * (0.3 + (k % 5) * 0.2)) % W
+        sy = rng0.uniform(0, H)
+        v = 60 + (k % 7) * 8
+        d.ellipse([sx, sy, sx + 2, sy + 2], fill=(v, v, v + 26))
 
     # expanding shockwave rings right after the snap
     for i in range(3):
@@ -505,8 +521,17 @@ def scene_snap(im, d, t, moon):
         p1 = lerp2((ox, oy), (cx + 200, cy), .35 * br)
         arrow(d, (ox, oy), p1, col=DANGER, w=5, head=20, t=br)
 
-    paste_sprite(im, moon, mx, my, 0.95 * mscale, rot=fly * -140,
-                 opacity=clamp(1 - lin(ll, 4.6, 5.4) * .7))
+    if fly < .92:
+        paste_sprite(im, moon, mx, my, 0.95 * mscale, rot=fly * -140)
+    else:
+        # receding spec: stays visible, gets smaller, trails a thin motion line
+        dot_a = clamp(1 - lin(ll, 6.0, 19.0) * .75)
+        drift = (ll - 4.6)
+        dx, dy = W - 300 - drift * 1.6, 232 + drift * 1.1
+        d.line([(dx - 60, dy + 13), (dx, dy)], fill=(70, 80, 120), width=2)
+        d.ellipse([dx - 7, dy - 7, dx + 7, dy + 7], fill=tuple(int(v * dot_a) for v in MOON))
+        d.text((dx + 16, dy - 10), "चाँद", font=font(26),
+               fill=tuple(int(v * dot_a) for v in MUTED))
 
     # labels
     a1 = alpha_fade(ll, .2, .7, 1.0, 1.3)
@@ -517,6 +542,27 @@ def scene_snap(im, d, t, moon):
     if a2 > .01:
         d.text((W / 2, 900), "चाँद अब सीधी रेखा में — 1.02 km/s की रफ़्तार से",
                font=font(46), fill=tuple(int(lerp(BG0[i], WARM[i], a2)) for i in range(3)), anchor="mm")
+
+    # ---- beat 2: the moon is gone; the tangent path keeps drawing ----
+    if fly > .9:
+        h = alpha_fade(ll, 4.6, 5.3, 900, 901)
+        if h > .01:
+            dash = (ll * 130) % 44
+            x = -100 + dash
+            while x < W + 100:
+                x1, x2 = max(-20, x), min(W + 20, x + 26)
+                # leave a gap where the Earth sits, the path only shows outside it
+                clear = abs(((x1 + x2) / 2) - cx) > r + 30
+                if x2 > x1 and clear:
+                    d.line([(x1, oy), (x2, oy)],
+                           fill=tuple(int(v * h * .55) for v in (96, 110, 158)), width=3)
+                x += 44
+            d.text((W / 2, 952), "पृथ्वी अकेली रह गई — पर उसकी कक्षा सूर्य के इर्द-गिर्द वैसी ही है",
+                   font=font(38), fill=tuple(int(v * h) for v in MUTED), anchor="mm")
+            # 1 s of screen time = 1 story day -> 1.02 km/s * 86400 s ~ 0.88 lakh km
+            dist = max(0.0, ll - 5.0) * 0.88
+            d.text((W - 160, 856), f"चाँद अब {dist:4.1f} लाख किमी दूर",
+                   font=font(32), fill=tuple(int(v * h) for v in WARM), anchor="ra")
 
     # speed streak particles behind the moon
     if .3 < fly < .95:
@@ -578,6 +624,15 @@ def scene_day1(im, d, t, moon):
         d.text((cx, cy + rr + 50), "पृथ्वी का स्पिन अब बिना ब्रेक",
                font=font(27), fill=MUTED, anchor="mm")
 
+    # live ticker: the day keeps stretching while you watch
+    tk = alpha_fade(ll, 2.6, 3.2, 900, 901)
+    if tk > .01:
+        ms = 1.8 * clamp((ll - 2.6) / 3.2)
+        d.text((bx, by + 496), "हर सदी में बढ़ रहा है:", font=font(26),
+               fill=tuple(int(v * tk) for v in MUTED))
+        d.text((bx, by + 532), f"+ {ms:4.2f} मिलीसेकंड",
+               font=font(42), fill=tuple(int(v * tk) for v in EARTH_L))
+
     for i, txt in enumerate(["तारे ज़्यादा दिखेंगे", "ज्वार-भाटा छोटे होंगे", "धुरी लड़खड़ाएगी"]):
         chip(im, d, 380 + i * 420, 1000, txt, [MUTED, WARM, VIOLET][i], ll, 1.2 + i * .25)
 
@@ -597,7 +652,7 @@ def scene_day30(im, d, t, moon):
     # big tilted earth with a wobbling axis, charted against a fixed reference axis
     cx, cy = 560, 660
     tilt = 23.5 + math.sin(ll * 2.4) * 7.0 * ease_io(ll, .4, 1.4)
-    draw_earth(im, cx, cy, r=180)
+    draw_earth(im, cx, cy, r=180, rot=ll * 9)
 
     # reference vertical + wobbling axis (extended)
     d.line([(cx, cy - 300), (cx, cy + 300)], fill=(64, 76, 122), width=2)
@@ -606,6 +661,9 @@ def scene_day30(im, d, t, moon):
     d.line([(cx, cy), (ax, ay)], fill=VIOLET, width=6)
     d.ellipse([ax - 9, ay - 9, ax + 9, ay + 9], fill=VIOLET)
     d.text((ax + 20, ay - 10), f"{tilt:4.1f}°", font=font(34, latin=True), fill=VIOLET)
+    if int(ll * 2) % 2 == 0:
+        d.ellipse([ay and 0 or 0, 0, 0, 0]) if False else None
+        d.ellipse([cx - 6, cy - 300 - 6, cx + 6, cy - 300 + 6], fill=(90, 104, 158))
     d.text((cx + 12, cy + 320), "धुरी का झुकाव", font=font(26), fill=MUTED)
 
     # wobble sine wave
@@ -653,8 +711,19 @@ def scene_year1(im, d, t, moon):
     d.ellipse([cx - 300, cy - 74, cx + 300, cy + 74], outline=(70, 96, 170), width=3, )
     # earth at centre with slight bulge
     blob_shadow(im, cx, cy + 190, 210, 30, a=90)
+    blend_pulse = .5 + .5 * math.sin(ll * 1.5)
+    for k in range(3):
+        ph = (ll * .32 + k / 3) % 1.0
+        trr = 96 + ph * 380
+        a = int(70 * (1 - ph) * op)
+        if a > 3:
+            ring = Image.new("RGBA", (int(trr * 2 + 30), int(trr * 2 + 30)), (0, 0, 0, 0))
+            ImageDraw.Draw(ring).ellipse([15, 15, 15 + trr * 2, 15 + trr * 2],
+                                         outline=(140, 205, 255, a), width=3)
+            ring = ring.resize((ring.width, int(ring.height * .34)), Image.BILINEAR)
+            im.paste(ring, (int(cx - ring.width / 2), int(cy - ring.height / 2)), ring)
     bulge = 1.0 + .05 * math.sin(ll * 3.1) * op
-    draw_earth(im, cx, cy, r=96)
+    draw_earth(im, cx, cy, r=96, rot=ll * 16)
     d.ellipse([cx - 96 / bulge, cy - 96 * bulge, cx + 96 / bulge, cy + 96 * bulge],
               outline=(140, 200, 255), width=3)
 
@@ -662,7 +731,8 @@ def scene_year1(im, d, t, moon):
     sun_y = cy - 20
     if op > .02:
         glow(im, sun_x, sun_y, 150, (255, 190, 60), a=int(100 * op), blur=58)
-        d.ellipse([sun_x - 74, sun_y - 74, sun_x + 74, sun_y + 74], fill=(255, 214, 96))
+        sr = 74 * (1 + .03 * math.sin(ll * 2.2))
+        d.ellipse([sun_x - sr, sun_y - sr, sun_x + sr, sun_y + sr], fill=(255, 214, 96))
         d.text((sun_x, sun_y + 104), "सूर्य", font=font(27), fill=WARM, anchor="mm")
 
     # moon ghost on the far orbit
@@ -743,9 +813,22 @@ def scene_decade(im, d, t, moon):
     if len(pts) > 2:
         d.line(pts, fill=EARTH_L, width=6, joint="curve")
         d.ellipse([pts[-1][0] - 9, pts[-1][1] - 9, pts[-1][0] + 9, pts[-1][1] + 9], fill=INK)
-        d.text((pts[-1][0] + 20, pts[-1][1] - 6),
-               f"{24 + 7 * (1 - math.exp(-3.2 * prog)):4.1f} घंटे",
-               font=font(30), fill=INK)
+        if prog < .999:      # static end label only until the playhead takes over
+            d.text((pts[-1][0] + 20, pts[-1][1] - 6),
+                   f"{24 + 7 * (1 - math.exp(-3.2 * prog)):4.1f} घंटे",
+                   font=font(30), fill=INK)
+    # playhead walking along the finished curve (keeps the chart alive)
+    if prog >= .999:
+        walk = clamp((ll - 2.6) / 7.0)
+        f = walk
+        px = gx + gw * f
+        val = 24 + 7 * (1 - math.exp(-3.2 * f))
+        py = gy + gh - (val - 24) / 7 * gh
+        d.line([(px, gy), (px, gy + gh)], fill=(44, 54, 92), width=2)
+        d.ellipse([px - 11, py - 11, px + 11, py + 11], outline=INK, width=3)
+        d.ellipse([px - 4, py - 4, px + 4, py + 4], fill=WARM)
+        d.text((px + 18, py - 40), f"{val:4.1f} घंटे", font=font(28), fill=INK)
+
     d.text((gx, gy - 56), "दिन की लंबाई कैसे बढ़ती जाएगी (अनुमानित)",
            font=font(30), fill=MUTED)
 
@@ -757,7 +840,7 @@ def scene_decade(im, d, t, moon):
 # scene 8 — outro
 # --------------------------------------------------------------------------
 def scene_outro(im, d, t, moon):
-    ll = t - 50.0
+    ll = t - SCENES[7][0]
     # slow drift-in of the camera (whole-comp move, reference-video style)
     cam = ease_io(ll, 0, 4.0)
     cz = 1.0 + 0.06 * cam
@@ -813,6 +896,8 @@ def scene_outro(im, d, t, moon):
 
     # closing shimmer: a thin light sweep across the frame (AE light-sweep trick)
     sw = lin(ll, 2.6, 4.2)
+    if sw >= 1:
+        sw = lin(ll, 7.4, 9.0)
     if 0 < sw < 1:
         band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         db = ImageDraw.Draw(band)
@@ -840,17 +925,44 @@ def vignette():
     return _VIG
 
 
-# scene table: (start, end, callable) — clean windows, no double-exposure
-SCENES = [
-    (0.0, 5.2),      # scene_title
-    (5.2, 12.4),     # scene_why
-    (12.4, 18.6),    # scene_snap
-    (18.6, 26.4),    # scene_day1
-    (26.4, 34.6),    # scene_day30
-    (34.6, 42.6),    # scene_year1
-    (42.6, 50.0),    # scene_decade
-    (50.0, DUR + 1.0),  # scene_outro
-]
+# scene table — filled by build_timeline(): (start, end)
+SCENES = []
+DUR = 61.0
+
+
+def vo_duration(path):
+    import re
+    out = subprocess.run([FFMPEG, "-hide_banner", "-i", path], capture_output=True, text=True).stderr
+    m = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", out)
+    return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else 0.0
+
+
+VO_FILES = ["vo-01-intro.mp3", "vo-02-day0.mp3", "vo-03-day1.mp3", "vo-04-day30.mp3",
+            "vo-05-year1.mp3", "vo-06-decade.mp3", "vo-07-outro.mp3"]
+VO_TIMES = []        # (scene_index, start_seconds, file)
+
+
+def build_timeline():
+    """Scene lengths follow the narration so nothing gets cut off mid-sentence."""
+    global SCENES, DUR, VO_TIMES
+    durs = [max(FPS_SAFE_MIN, vo_duration(os.path.join(AUDIO_DIR, f)) if VOICEOVER else 0)
+            for f in VO_FILES]
+    if not VOICEOVER:
+        durs = [5.2, 7.2, 6.2, 7.8, 8.2, 8.0, 7.4, 11.0]
+    # scene 0 = title (no VO), 1..7 = one VO line each
+    lengths = [START_PAD + 0.6] + [d + VO_LEAD + VO_TAIL for d in durs]
+    # outro keeps its own tail so the end card can breathe
+    lengths[-1] = durs[-1] + 1.0 + 2.6
+    SCENES = []
+    t0 = 0.0
+    for L in lengths:
+        SCENES.append((t0, t0 + L))
+        t0 += L
+    DUR = t0
+    VO_TIMES = []
+    for i, f in enumerate(VO_FILES):
+        VO_TIMES.append((i + 1, SCENES[i + 1][0] + VO_LEAD, os.path.join(AUDIO_DIR, f)))
+    print(f"timeline: {DUR:.1f}s, {len(SCENES)} scenes")
 SCENE_FN = [scene_title, scene_why, scene_snap, scene_day1,
             scene_day30, scene_year1, scene_decade, scene_outro]
 XF = 0.30         # dip length either side of a cut, seconds
@@ -870,6 +982,9 @@ def frame(i, moon_big):
     for k, (a, b) in enumerate(SCENES):
         if a <= t < b:
             idx = k
+    else:
+        if t >= SCENES[-1][1]:
+            idx = len(SCENES) - 1
     im = draw_scene(idx, t, moon_big)
     # dip-to-background transition at every cut (clean, no double exposure)
     dip = 0.0
@@ -891,23 +1006,61 @@ def frame(i, moon_big):
     return im
 
 
+def audio_filter():
+    """narration clips at fixed scene offsets, mixed over a soft synth pad"""
+    inputs, filters, labels = [], [], []
+    for n, (scene, at, path) in enumerate(VO_TIMES):
+        inputs += ["-i", path]
+        filters.append(f"[{n + 1}:a]aresample=48000,adelay={int(at * 1000)}|{int(at * 1000)},"
+                       f"volume=1.0[v{n}]")
+        labels.append(f"[v{n}]")
+    total = DUR
+    # gentle pad: two detuned sines + slow tremolo, very low in the mix
+    filters.append(
+        f"aevalsrc='0.055*sin(2*PI*110*t)+0.035*sin(2*PI*164.81*t)"
+        f"+0.028*sin(2*PI*220*t)':s=48000:d={total:.2f}[pad]")
+    filters.append("[pad]tremolo=f=0.12:d=0.55,lowpass=f=900,volume=0.9[pad2]")
+    labels.append("[pad2]")
+    mix = "".join(labels) + f"amix=inputs={len(labels)}:normalize=0:dropout_transition=0[mix]"
+    filters.append(mix)
+    filters.append("[mix]alimiter=limit=0.95,loudnorm=I=-16:TP=-1.5:LRA=11[aout]")
+    return inputs, ";".join(filters)
+
+
 def main():
+    build_timeline()
+    NF = int(DUR * FPS)
     only = sys.argv[1] if len(sys.argv) > 1 else None
     moon_big = make_moon(120)
+    silent = os.path.join(HERE, "_silent.mp4")
     cmd = [FFMPEG, "-y", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
            "-i", "-",
            "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-           "-pix_fmt", "yuv420p", "-movflags", "+faststart", OUT]
+           "-pix_fmt", "yuv420p", "-movflags", "+faststart", silent]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     try:
         for i in range(NF):
             proc.stdin.write(frame(i, moon_big).tobytes())
-            if i % 45 == 0:
+            if i % 60 == 0:
                 print(f"  frame {i}/{NF}  ({i / FPS:5.1f}s)", flush=True)
     finally:
         proc.stdin.close()
         proc.wait()
+    print("video encoded ->", silent)
+
+    if not VOICEOVER:
+        os.replace(silent, OUT)
+        print("done (silent) ->", OUT)
+        return
+
+    inputs, af = audio_filter()
+    cmd2 = [FFMPEG, "-y", "-loglevel", "error", "-i", silent] + inputs + [
+        "-filter_complex", af, "-map", "0:v", "-map", "[aout]",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest",
+        "-movflags", "+faststart", OUT]
+    subprocess.run(cmd2, check=True)
+    os.remove(silent)
     print("done ->", OUT)
 
 

@@ -1,7 +1,7 @@
 # Reference video ka analysis + naya video
 
 **Reference:** [2D Motion Graphics Delivery Animation in After Effects Tutorials](https://youtu.be/MaHx9A5lDsg) — Nijat Ibrahimli, 28:33, 8K views
-**Naya video:** `moon-orbit-video/chand-dur-2d-motion-graphics.mp4` — 61 sec, 1920×1080, 30 fps, Hindi text, 2D motion graphics
+**Naya video:** `moon-orbit-video/chand-dur-2d-motion-graphics.mp4` — **2:08**, 1920×1080, 30 fps, Hindi **voice-over** + text, 2D motion graphics
 
 ---
 
@@ -50,7 +50,7 @@ Ye rules maine code mein function bana diye hain: `ease_io()`, `back_out()` (ove
 
 ## 2. Naya video — "चाँद अगर पृथ्वी की कक्षा छोड़ दे?"
 
-**Format:** 1920×1080 · 30 fps · 61 sec · H.264 (YouTube-ready) · Hindi (Devanagari) text
+**Format:** 1920×1080 · 30 fps · **2:08 (128 sec)** · H.264 + AAC stereo · Hindi voice-over (7 lines) + Devanagari on-screen text
 **File:** `moon-orbit-video/chand-dur-2d-motion-graphics.mp4`
 
 ### Shot list / storyboard
@@ -108,3 +108,24 @@ python3 moon-orbit-video/scripts/render.py
 
 > Note: file `moon-orbit-video/` folder mein hai. 19 MB MP4 repo mein commit nahi kiya
 > gaya (build artifact) — render script chalate hi same video regenerate ho jaata hai.
+
+---
+
+## 4. Voice-over (added)
+
+- 7 Hindi narration lines, ek-ek scene ke liye: `audio/vo-01-intro.mp3` … `vo-07-outro.mp3`
+  (timings: 19.1 / 15.4 / 17.5 / 14.8 / 14.4 / 14.5 / 11.4 sec).
+- **Scene timing narration se derive hoti hai** (`build_timeline()`): har scene =
+  VO length + 0.85 s lead + 1.15 s tail, isliye koi line beech mein nahi katti.
+- Mix: VO full level + ek halka synth pad (110/164.8/220 Hz, tremolo + lowpass) bed ke
+  roop mein, `amix → alimiter → loudnorm (I=−16, TP=−1.5)` — YouTube-safe loudness.
+- Output: AAC 192 kbps, 48 kHz **stereo** (pehle mono tha, ab fix).
+- Silent version: `NO_VO=1 python3 scripts/render.py`
+- Voice badalna ho: `audio/` ke clips replace karo (same filenames) aur re-render — timeline
+  khud naye durations ke hisaab se adjust ho jayegi.
+
+### Timing barish
+1:01 ka silent cut → 2:08, kyunki narration ko poora bolne ki jagah chahiye. Silent footage
+khatam nahi hua, bas saans lene ki jagah mili — aur usi extra time mein naye micro-beats
+add hue (orbit idle motion, chand ka door hota dot + "लाख किमी" counter, live millisecond
+ticker, chart pe walking playhead, second light sweep).
